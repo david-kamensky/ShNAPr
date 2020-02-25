@@ -7,6 +7,7 @@ This module was originally written to support the following paper, submitted to 
 title = "Open-source immersogeometric fluid--structure interaction analysis using {FEniCS} and {tIGAr}",
 journal = "Computers \& Mathematics With Applications",
 author = "D. Kamensky",
-note = "Under review"
+doi = "https://doi.org/10.1016/j.camwa.2020.01.023",
+note = "In press"
 }
 ```
