@@ -88,6 +88,67 @@ def covariantRank2TensorToCartesian2D(T,a,a0,a1):
 
     return ea*T*ae
 
+def contravariantTensorToCartesian2D(T,a,a0,a1):
+    """
+    Convert 2D contravariant tensor from curvilinear basis 
+    to local Cartesian basis.
+
+    Parameters
+    ----------
+    T : ufl rank 1 or rank 2 tensor
+    a : metric tensor
+    a0, a1: curvilinear basis vectors
+
+    Returns
+    -------
+    res : ufl tensor
+    """
+    e0,e1 = orthonormalize2D(a0,a1)
+    e0c, e1c = e0, e1
+    eca = as_matrix(((inner(e0c,a0),inner(e0c,a1)),
+                     (inner(e1c,a0),inner(e1c,a1))))
+    aec = eca.T
+
+    rank = len(T.ufl_shape)
+    if rank == 1:
+        return eca*T
+    elif rank == 2:
+        return eca*T*aec
+    else:
+        raise ValueError("Rank "+str(rank)+" tensor is not supported.")
+
+def contravariantTensorToCurvilinear2D(T,a,a0,a1):
+    """
+    Convert 2D contravariant tensor from local Cartesian basis 
+    to curvilinear basis.
+
+    Parameters
+    ----------
+    T : ufl rank 1 or rank 2 tensor
+    a : metric tensor
+    a0, a1: curvilinear basis vectors
+
+    Returns
+    -------
+    res : ufl tensor
+    """
+    # raise indices on curvilinear basis
+    ac = inv(a)
+    a0c = ac[0,0]*a0 + ac[0,1]*a1
+    a1c = ac[1,0]*a0 + ac[1,1]*a1
+    e0,e1 = orthonormalize2D(a0,a1)
+    ace = as_matrix(((inner(a0c,e0),inner(a0c,e1)),
+                     (inner(a1c,e0),inner(a1c,e1))))
+    eac = ace.T
+
+    rank = len(T.ufl_shape)
+    if rank == 1:
+        return ace*T
+    elif rank == 2:
+        return ace*T*eac
+    else:
+        raise ValueError("Rank "+str(rank)+" tensor is not supported.")
+
 def voigt2D(T,strain=True):
     """
     Convert a 2D symmetric rank-2 tensor ``T`` to Voigt notation.  If
