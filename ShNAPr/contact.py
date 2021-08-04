@@ -13,6 +13,9 @@ for shell structures is outlined in Remark 7 of
 
 although it has never been implemented.  Alternatively, it would be quite
 easy to implement the "naive" frictional model in the cited reference.
+
+The module also provides a simple penalty formulation of frictionless contact
+against an arbitrary plane.
 """
 
 from tIGAr import *
@@ -347,3 +350,43 @@ class ShellContactNonlinearProblem(ExtractedNonlinearProblem):
         A.mat().assemble()
         Mm.copy(result=A.mat())
         return A
+
+class ContactPlane:
+    def __init__(self,origin,normal,k,h=Constant(0)):
+        """
+        The plane against which shells can contact is defined by a point,
+        ``origin``, and a ``normal`` vector which points outward from the
+        penalized region (i.e., toward a structure that is out of 
+        contact with the plane); this normal vector need not
+        be normalized.  The parameter ``k`` is the stiffness
+        of the penalty, and the parameter ``h`` can optionally specify a
+        length (before contact with the plane) over which the penalty force
+        kicks in smoothly, which may improve convergence in certain cases.
+        """
+        self.origin = origin
+        self.n = normal/sqrt(dot(normal,normal))
+        self.k = k
+        self.h = h
+
+    def signedDistance(self,x):
+        """
+        This method returns the signed distance from the contact plane
+        to a point ``x``, where a positive distance indicates the the 
+        point is in contact, and a negative distance means that the
+        point is out of contact.
+        """
+        return -dot(x-self.origin,self.n)
+
+    def forceDensity(self,x):
+        """
+        This method returns a vector, giving the density of penalty force
+        at a point ``x``.  The formula for the force is adapted from (59) in
+        Section 5.2 of ``https://doi.org/10.1016/j.cma.2014.10.040``
+        """
+        d = self.signedDistance(x)
+        linear = self.k*(0.5*self.h + d)
+        quadratic = 0.5*self.k*((d+self.h)**2)/self.h
+        f = conditional(lt(d,-self.h),Constant(0),
+                        conditional(gt(d,Constant(0)),linear,quadratic))
+        return f*self.n
+        
