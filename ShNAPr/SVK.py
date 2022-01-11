@@ -7,7 +7,7 @@ The formulation is taken from
 
 https://doi.org/10.1016/j.cma.2009.08.013
 """
-
+import numpy as np
 from ShNAPr.kinematics import *
 
 # TODO: Generalize this to take an arbitrary material matrix, and have a
@@ -175,7 +175,8 @@ class ShellStressSVK(ShellForceSVK):
     Class to compute Kirchhoff--Love shell's stresses using
     St. Venant--Kirchhoff (SVK) material model.
     """
-    def __init__(self, spline, u_hom, E, nu, h_th, linearize=False):
+    def __init__(self, spline, u_hom, E, nu, h_th, 
+                 linearize=False, G_det_min=0):
         """
         Parameters
         ----------
@@ -188,14 +189,35 @@ class ShellStressSVK(ShellForceSVK):
             If ``linearize`` is True, using linearized membrane strains
             and curvature changes to compute stresses. For linear 
             problem, set this argument as True.
+        G_det_min :float, default is 0
+            This argument is the relative minimum allowable determinant 
+            of KL metric tensor ``self.G``, if absolute relative 
+            determinant (det/det_range) is smaller than this value, 
+            the through thickness coordinate ``xi2`` will be changed 
+            to 0 to reduce stress concentration (usually mid-surface has
+            less obvious stress concentration around surface corner). 
+            Default value is 0, this function will not be activated.
         """
         super().__init__(spline, u_hom, E, nu, h_th, linearize)
+        self.G_det_min = G_det_min
 
     def secondPiolaKirchhoffStress(self, xi2):
         """
         Returns 2nd Piola--Kirchhoff stresses in curvilinear basis at the
         through thickness coordinate ``xi2`` (-h_th/2 <= xi2 <= h_th/2). 
         """
+        # Modify ``xi2`` to based on determinant of KL metric tensor to 
+        # reduce stress concentration
+        G_KL = metricKL(self.A, self.B, xi2)
+
+        G_KL_det = det(G_KL)
+        G_KL_det_proj = self.spline.projectScalarOntoLinears(G_KL_det)
+        G_KL_det_range = np.max(G_KL_det_proj.vector().get_local()) \
+                       - np.min(G_KL_det_proj.vector().get_local())
+        xi2_temp = conditional(le(abs(G_KL_det), 
+                               self.G_det_min*G_KL_det_range), 0, xi2)
+        xi2 = xi2_temp
+        
         epsilonBar = self.membraneStrain()
         kappaBar = self.curvatureChange()
         # Green-Lagrange strain tensor
