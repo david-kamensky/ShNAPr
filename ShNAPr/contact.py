@@ -304,8 +304,8 @@ class ShellContactContext:
                 return Kms[0][0], Fvs[0]
         else:
             Fs = [PETScVector(Fv) if Fv is not None else None for Fv in Fvs]
-            Ks = [PETScMatrix(Kms[i][j]) if Kms[i][j] is not None else None 
-                  for i in range(self.nSplines) for j in range(self.nSplines)]
+            Ks = [[PETScMatrix(Km) if Km is not None else None for Km in Kmi]
+                  for Kmi in Kms]
             if self.multiPatch:
                 return Ks, Fs
             else:
